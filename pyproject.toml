@@ -1,0 +1,18 @@
+[project]
+name = "finalproject-khlystikov-m25-555"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "KhlystikovAI"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "ruff (>=0.15.2,<0.16.0)",
+    "prettytable (>=3.17.0,<4.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
