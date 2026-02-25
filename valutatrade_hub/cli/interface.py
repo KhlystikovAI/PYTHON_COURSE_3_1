@@ -7,7 +7,6 @@ from prettytable import PrettyTable
 
 from valutatrade_hub.core.usecases import (
     AuthError,
-    PortfolioError,
     buy,
     get_rate,
     login,
@@ -15,7 +14,7 @@ from valutatrade_hub.core.usecases import (
     sell,
     show_portfolio,
 )
-
+from valutatrade_hub.core.exceptions import ApiRequestError, CurrencyNotFoundError, InsufficientFundsError
 
 class CLIError(Exception):
     pass
@@ -134,7 +133,7 @@ def _cmd_buy(argv: list[str], current_user: dict[str, Any] | None) -> str:
     except ValueError as e:
         raise CLIError(" Сумма должна быть положительным числом") from e
 
-    result = buy(user_id=user["user_id"], currency=currency, amount=amount, base="USD")
+    result = buy(user_id=user["user_id"], currency_code=currency, amount=amount, base="USD")
 
     lines = [
         f"Покупка выполнена: {result['amount']:.4f} {result['currency']}"
@@ -166,7 +165,7 @@ def _cmd_sell(argv: list[str], current_user: dict[str, Any] | None) -> str:
     except ValueError as e:
         raise CLIError(" Сумма должна быть положительным числом") from e
 
-    result = sell(user_id=user["user_id"], currency=currency, amount=amount, base="USD")
+    result = sell(user_id=user["user_id"], currency_code=currency, amount=amount, base="USD")
 
     lines = [
         f"Продажа выполнена: {result['amount']:.4f} {result['currency']}"
@@ -245,8 +244,27 @@ def main() -> None:
 
             print(f"Неизвестная команда: {cmd}. Введите 'help'.")
 
-        except (AuthError, PortfolioError, CLIError) as e:
+        except InsufficientFundsError as e:
+            # печатаем как есть (по заданию)
             print(str(e))
+
+        except CurrencyNotFoundError as e:
+            # подсказка help get-rate или список кодов (по заданию)
+            print(str(e))
+            print("Подсказка: используйте get-rate или проверьте код валюты.")
+            print("Поддерживаемые коды: USD, EUR, RUB, BTC, ETH")
+
+        except ApiRequestError as e:
+            print(str(e))
+            print("Подсказка: повторите позже или проверьте сеть/доступ к источнику курсов.")
+
+        except (AuthError, CLIError, ValueError) as e:
+            # ValueError используем для пользовательских ошибок типа "нет кошелька"
+            print(str(e))
+
         except KeyboardInterrupt:
             print("\nВыход.")
+
+        except Exception as e:
+            print(f"Внутренняя ошибка: {type(e).__name__}: {e}")
             return

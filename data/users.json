@@ -12,5 +12,12 @@
     "hashed_password": "b71f8c9d2c2a0b300265b7b9cb7e7c0f65737661512142b514ae177f0e2cb1d6",
     "salt": "7d042c95b5cae091",
     "registration_date": "2026-02-25T21:21:58.350871"
+  },
+  {
+    "user_id": 3,
+    "username": "t1",
+    "hashed_password": "cc5f5028667d966b79009e763dc4620d31270b5d63ae1cde71bb4e1fa76660e1",
+    "salt": "2ef0d0a869810943",
+    "registration_date": "2026-02-26T01:04:32.566088"
   }
 ]
