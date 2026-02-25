@@ -191,7 +191,7 @@ def get_rate(from_code: str, to_code: str) -> dict[str, Any]:
     settings = SettingsLoader()
     ttl: int = int(settings.get("rates_ttl_seconds", 300))
 
-    # валидация через реестр
+    # валидация через реестр валют
     frm = _normalize_currency_code(from_code)  # CurrencyNotFoundError если неизвестно
     to = _normalize_currency_code(to_code)
 
@@ -201,55 +201,58 @@ def get_rate(from_code: str, to_code: str) -> dict[str, Any]:
             "to": to,
             "rate": 1.0,
             "updated_at": datetime.now().isoformat(timespec="seconds"),
+            "source": "Local",
         }
 
     db = DatabaseManager()
-    rates = db.read_rates()
-    if not isinstance(rates, dict):
-        rates = {}
+    snapshot = db.read_rates()
+    if not isinstance(snapshot, dict):
+        snapshot = {}
+
+    pairs = snapshot.get("pairs")
+    if not isinstance(pairs, dict):
+        pairs = {}
 
     key = f"{frm}_{to}"
+    cached = pairs.get(key)
+
+    if not isinstance(cached, dict):
+        raise ApiRequestError(
+            f"Курс {frm}→{to} недоступен в кэше. Выполните 'update-rates'."
+        )
+
+    rate_val = cached.get("rate")
+    updated_at_raw = cached.get("updated_at")
+    source = cached.get("source", "Unknown")
+
+    if not isinstance(rate_val, (int, float)) or not isinstance(updated_at_raw, str):
+        raise ApiRequestError(
+            f"Курс {frm}→{to} повреждён в кэше. Выполните 'update-rates'."
+        )
+
+    # Поддержка ISO с 'Z' (UTC)
     now = datetime.now()
-
-    cached = rates.get(key)
-    if isinstance(cached, dict):
-        rate_val = cached.get("rate")
-        updated_at_raw = cached.get("updated_at")
-        if isinstance(rate_val, (int, float)) and isinstance(updated_at_raw, str):
-            try:
-                updated_at = datetime.fromisoformat(updated_at_raw)
-                age = (now - updated_at).total_seconds()
-                if age <= ttl:
-                    return {"from": frm, "to": to, "rate": float(rate_val), "updated_at": updated_at_raw}
-            except ValueError:
-                pass
-
-    # кеша нет — пробуем обновить
     try:
-        ex = _stub_rates_usd()
+        ts = updated_at_raw.replace("Z", "+00:00")
+        updated_at_dt = datetime.fromisoformat(ts).replace(tzinfo=None)
+    except ValueError as e:
+        raise ApiRequestError(
+            f"Курс {frm}→{to} имеет некорректную метку времени. Выполните 'update-rates'."
+        ) from e
 
-        def to_usd(code: str) -> float:
-            pair = f"{code}_USD"
-            if pair not in ex:
-                raise CurrencyNotFoundError(code)
-            return ex[pair]
+    age = (now - updated_at_dt).total_seconds()
+    if age > ttl:
+        raise ApiRequestError(
+            f"Курс {frm}→{to} устарел (обновлено: {updated_at_raw}). Выполните 'update-rates'."
+        )
 
-        frm_to_usd = to_usd(frm)
-        to_to_usd = to_usd(to)
-        rate = frm_to_usd / to_to_usd
-
-        updated_at_str = now.isoformat(timespec="seconds")
-        rates[key] = {"rate": rate, "updated_at": updated_at_str}
-        rates["source"] = "Локальный источник (заглушка)"
-        rates["last_refresh"] = updated_at_str
-        db.write_rates(rates)
-
-        return {"from": frm, "to": to, "rate": rate, "updated_at": updated_at_str}
-    except CurrencyNotFoundError:
-        raise
-    except Exception as e:
-        # по ТЗ — ApiRequestError
-        raise ApiRequestError(str(e)) from e
+    return {
+        "from": frm,
+        "to": to,
+        "rate": float(rate_val),
+        "updated_at": updated_at_raw,
+        "source": source,
+    }
 
 @log_action("BUY", verbose=True)
 def buy(user_id: int, currency_code: str, amount: float, base: str = "USD") -> dict[str, Any]:
