@@ -17,7 +17,6 @@ from valutatrade_hub.core.usecases import (
 from valutatrade_hub.core.exceptions import ApiRequestError, CurrencyNotFoundError, InsufficientFundsError
 
 from valutatrade_hub.logging_config import setup_logging
-
 from valutatrade_hub.parser_service.api_clients import CoinGeckoClient, ExchangeRateApiClient
 from valutatrade_hub.parser_service.config import ParserConfig
 from valutatrade_hub.parser_service.storage import RatesStorage
@@ -200,7 +199,89 @@ def _help() -> str:
         "  get-rate --from <str> --to <str>\n"
         "  help\n"
         "  exit\n"
+        "  update-rates [--source coingecko|exchangerate]"
+        "  show-rates [--currency <str>] [--top <int>] [--base <str>]"
     )
+def _cmd_update_rates(argv: list[str]) -> str:
+    kv = _parse_kv_args(argv) if argv else {}
+    source = (kv.get("source") or "").strip().lower()  # coingecko / exchangerate / empty
+
+    cfg = ParserConfig()
+    storage = RatesStorage(cfg.rates_path, cfg.history_path)
+
+    clients = []
+    if source in {"", "coingecko"}:
+        clients.append(CoinGeckoClient(cfg.CRYPTO_ID_MAP, vs_currency=cfg.BASE_CURRENCY, timeout=cfg.REQUEST_TIMEOUT))
+    if source in {"", "exchangerate"}:
+        clients.append(ExchangeRateApiClient(cfg.EXCHANGERATE_API_KEY, base_currency=cfg.BASE_CURRENCY, timeout=cfg.REQUEST_TIMEOUT))
+
+    updater = RatesUpdater(storage=storage, clients=clients)
+    result = updater.run_update()
+
+    if result["errors"]:
+        return (
+            "Update завршен с ошибками.\n"
+            f"Обновлено курсов: {result['updated']}. Последнее обновление: {result['last_refresh']}\n"
+            "Проверьте logs/actions.log для деталей."
+        )
+
+    return f"Обновление успешно. Всего курсов обновлено: {result['updated']}. Последнее обновление: {result['last_refresh']}"
+
+def _cmd_show_rates(argv: list[str]) -> str:
+    kv = _parse_kv_args(argv) if argv else {}
+    currency = (kv.get("currency") or "").strip().upper()
+    base = (kv.get("base") or "USD").strip().upper()
+    top_raw = kv.get("top")
+
+    cfg = ParserConfig()
+    storage = RatesStorage(cfg.rates_path, cfg.history_path)
+    snap = storage.read_rates_snapshot()
+
+    pairs = snap.get("pairs")
+    if not isinstance(pairs, dict) or not pairs:
+        return "Локальный кэш пуст. Выполните 'update-rates', чтобы загрузить данные."
+
+    last_refresh = snap.get("last_refresh")
+
+    # фильтруем пары по base (TO)
+    rows = []
+    for pair, obj in pairs.items():
+        if not isinstance(obj, dict):
+            continue
+        if "_" not in pair:
+            continue
+        frm, to = pair.split("_", 1)
+        if to.upper() != base:
+            continue
+        rate = obj.get("rate")
+        updated_at = obj.get("updated_at")
+        if not isinstance(rate, (int, float)):
+            continue
+        if currency and frm.upper() != currency:
+            continue
+        rows.append((pair.upper(), float(rate), str(updated_at) if updated_at else ""))
+
+    if currency and not rows:
+        return f"Курс для '{currency}' не найден в кэше."
+
+    # сортировка
+    if top_raw is not None:
+        try:
+            top_n = int(top_raw)
+        except ValueError as e:
+            raise CLIError("--top должен быть числом") from e
+        rows.sort(key=lambda x: x[1], reverse=True)
+        rows = rows[: max(top_n, 0)]
+    else:
+        rows.sort(key=lambda x: x[0])
+
+    table = PrettyTable()
+    table.field_names = ["Пара", "Курс", "Обновлено"]
+    for pair, rate, upd in rows:
+        table.add_row([pair, rate, upd])
+
+    header = f"Курсы из кэша (обновлены {last_refresh}):"
+    return header + "\n" + str(table)
 
 
 def main() -> None:
@@ -248,6 +329,14 @@ def main() -> None:
 
             if cmd == "get-rate":
                 print(_cmd_get_rate(argv))
+                continue
+
+            if cmd == "update-rates":
+                print(_cmd_update_rates(argv))
+                continue
+
+            if cmd == "show-rates":
+                print(_cmd_show_rates(argv))
                 continue
 
             print(f"Неизвестная команда: {cmd}. Введите 'help'.")
