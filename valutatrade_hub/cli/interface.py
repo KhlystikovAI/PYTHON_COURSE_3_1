@@ -18,6 +18,11 @@ from valutatrade_hub.core.exceptions import ApiRequestError, CurrencyNotFoundErr
 
 from valutatrade_hub.logging_config import setup_logging
 
+from valutatrade_hub.parser_service.api_clients import CoinGeckoClient, ExchangeRateApiClient
+from valutatrade_hub.parser_service.config import ParserConfig
+from valutatrade_hub.parser_service.storage import RatesStorage
+from valutatrade_hub.parser_service.updater import RatesUpdater
+
 class CLIError(Exception):
     pass
 
