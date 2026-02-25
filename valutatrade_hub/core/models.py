@@ -3,14 +3,11 @@ from __future__ import annotations
 from datetime import datetime
 import hashlib
 from typing import Any
+from valutatrade_hub.core.exceptions import InsufficientFundsError
 
 
 class ValidationError(ValueError):
     """Ошибка валидации."""
-
-
-class InsufficientFundsError(ValidationError):
-    """Баланс недостаточен для обмена."""
 
 
 class User:
@@ -126,13 +123,18 @@ class Wallet:
     def withdraw(self, amount: float) -> None:
         if not isinstance(amount, (int, float)):
             raise ValidationError("Количество должно быть числом")
+
         amount_f = float(amount)
         if amount_f <= 0:
             raise ValidationError("Количество должно быть положительным числом")
+
         if amount_f > self._balance:
             raise InsufficientFundsError(
-                f"Недостаточно средств: доступно {self._balance}, необходимо {amount_f}"
-            )
+                available=self._balance,
+                required=amount_f,
+                code=self.currency_code,
+        )
+
         self._balance -= amount_f
 
     def get_balance_info(self) -> str:
