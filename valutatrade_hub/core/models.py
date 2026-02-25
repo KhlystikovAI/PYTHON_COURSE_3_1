@@ -48,7 +48,7 @@ class User:
     @username.setter
     def username(self, value: str) -> None:
         if not isinstance(value, str):
-            raise ValidationError("username должно быть string")
+            raise ValidationError("username должно быть строкой")
         value = value.strip()
         if not value:
             raise ValidationError("username не может быть пустым")
@@ -85,7 +85,7 @@ class User:
 
     def change_password(self, new_password: str) -> None:
         if not isinstance(new_password, str):
-            raise ValidationError("пароль должен быть string")
+            raise ValidationError("пароль должен быть строкой")
         if len(new_password) < 4:
             raise ValidationError("пароль должен быть длиннее 4 символов")
         self._hashed_password = self._hash_password(new_password, self._salt)
@@ -94,7 +94,7 @@ class User:
 class Wallet:
     def __init__(self, currency_code: str, balance: float = 0.0) -> None:
         if not isinstance(currency_code, str):
-            raise ValidationError("currency_code должен быть string")
+            raise ValidationError("currency_code должен быть строкой")
         code = currency_code.strip().upper()
         if not code:
             raise ValidationError("currency_code не иможет быть пустым")
@@ -112,23 +112,23 @@ class Wallet:
             raise ValidationError("баланс должен быть числом")
         value_f = float(value)
         if value_f < 0:
-            raise ValidationError("баланс не мождет быть отрицательным")
+            raise ValidationError("баланс не может быть отрицательным")
         self._balance = value_f
 
     def deposit(self, amount: float) -> None:
         if not isinstance(amount, (int, float)):
-            raise ValidationError("'amount' должно быть числом")
+            raise ValidationError("Количество должно быть числом")
         amount_f = float(amount)
         if amount_f <= 0:
-            raise ValidationError("'amount' должно быть положительным числом")
+            raise ValidationError("Количество должно быть положительным числом")
         self._balance += amount_f
 
     def withdraw(self, amount: float) -> None:
         if not isinstance(amount, (int, float)):
-            raise ValidationError("'amount' должно быть числом")
+            raise ValidationError("Количество должно быть числом")
         amount_f = float(amount)
         if amount_f <= 0:
-            raise ValidationError("'amount' должно быть положительным числом")
+            raise ValidationError("Количество должно быть положительным числом")
         if amount_f > self._balance:
             raise InsufficientFundsError(
                 f"Недостаточно средств: доступно {self._balance}, необходимо {amount_f}"
@@ -153,7 +153,7 @@ class Portfolio:
                     raise ValidationError("Код валюты должен соответствовать справочнику")
                 key = str(code).strip().upper()
                 if not key:
-                    raise ValidationError("код валюты не может быть пустым")
+                    raise ValidationError("Код валюты не может быть пустым")
                 self._wallets[key] = wallet
 
     @property
@@ -171,7 +171,7 @@ class Portfolio:
 
     def add_currency(self, currency_code: str) -> Wallet:
         if not isinstance(currency_code, str):
-            raise ValidationError("currency_code должен быть string")
+            raise ValidationError("currency_code должен быть строкой")
         code = currency_code.strip().upper()
         if not code:
             raise ValidationError("currency_code не может быть пустым")
