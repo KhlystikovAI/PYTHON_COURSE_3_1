@@ -2,5 +2,13 @@
   {
     "user_id": 1,
     "wallets": {}
+  },
+  {
+    "user_id": 2,
+    "wallets": {
+      "BTC": {
+        "balance": 0.05
+      }
+    }
   }
 ]
