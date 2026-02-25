@@ -16,6 +16,8 @@ from valutatrade_hub.core.usecases import (
 )
 from valutatrade_hub.core.exceptions import ApiRequestError, CurrencyNotFoundError, InsufficientFundsError
 
+from valutatrade_hub.logging_config import setup_logging
+
 class CLIError(Exception):
     pass
 
@@ -197,6 +199,7 @@ def _help() -> str:
 
 
 def main() -> None:
+    setup_logging()
     print("ValutaTrade Hub. Type 'help' for commands.")
     current_user: dict[str, Any] | None = None
 
