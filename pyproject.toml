@@ -1,17 +1,24 @@
-[project]
-name = "finalproject-khlystikov-m25-555"
+[tool.poetry]
+name = "finalproject_khlystikov_m25_555"
 version = "0.1.0"
-description = ""
-authors = [
-    {name = "KhlystikovAI"}
-]
+description = "Console currency wallet (educational project)"
+authors = ["khlystikov"]
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "ruff (>=0.15.2,<0.16.0)",
-    "prettytable (>=3.17.0,<4.0.0)"
-]
+packages = [{ include = "finalproject_khlystikov_m25_555", from = "src" }]
 
+[tool.poetry.dependencies]
+python = ">=3.10"
+prettytable = "^3.17.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.15.2"
+
+[tool.poetry.scripts]
+project = "finalproject_khlystikov_m25_555.cli:main"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
