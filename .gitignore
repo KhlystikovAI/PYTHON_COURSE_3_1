@@ -7,4 +7,3 @@ __pycache__/
 .vscode/
 logs/
 data/exchange_rates.json
-data/rates.json
