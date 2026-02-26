@@ -6,3 +6,5 @@ __pycache__/
 *.pyc
 .vscode/
 logs/
+data/exchange_rates.json
+data/rates.json
